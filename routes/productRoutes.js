@@ -23,7 +23,7 @@ router.post("/", async (req, res) => {
       category,
       images: pictures,
       age,
-      size,
+      sizes,
     } = req.body;
     const product = await Product.create({
       name,
@@ -32,7 +32,7 @@ router.post("/", async (req, res) => {
       category,
       pictures,
       age,
-      size,
+      sizes,
     });
     const products = await Product.find();
     res.status(201).json(products);
@@ -53,6 +53,8 @@ router.patch("/:id", async (req, res) => {
       price,
       category,
       pictures,
+      age,
+      size,
     });
     const products = await Product.find();
     res.status(200).json(products);
