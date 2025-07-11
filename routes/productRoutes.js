@@ -24,6 +24,7 @@ router.post("/", async (req, res) => {
       images: pictures,
       age,
       sizes,
+      classNo,
     } = req.body;
     const product = await Product.create({
       name,
@@ -33,6 +34,7 @@ router.post("/", async (req, res) => {
       pictures,
       age,
       sizes,
+      class: classNo,
     });
     const products = await Product.find();
     res.status(201).json(products);

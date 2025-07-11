@@ -30,6 +30,10 @@ const ProductSchema = mongoose.Schema(
       type: Array,
       required: true,
     },
+    class: {
+      type: String,
+      required: false,
+    },
   },
   { minimize: false }
 );
