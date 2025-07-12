@@ -53,6 +53,7 @@ router.patch("/:id", async (req, res) => {
       category,
       images: pictures,
       classNo,
+      sizes,
     } = req.body;
     const product = await Product.findByIdAndUpdate(id, {
       name,
@@ -61,7 +62,7 @@ router.patch("/:id", async (req, res) => {
       category,
       pictures,
       class: classNo,
-      size,
+      sizes,
     });
     const products = await Product.find();
     res.status(200).json(products);
