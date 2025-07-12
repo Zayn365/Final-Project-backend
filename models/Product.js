@@ -30,10 +30,7 @@ const ProductSchema = mongoose.Schema(
       type: Array,
       required: true,
     },
-    class: {
-      type: Array,
-      required: false,
-    },
+    class: { type: [String], required: false }, // 👈 critical fix here
   },
   { minimize: false }
 );
