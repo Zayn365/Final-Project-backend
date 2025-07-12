@@ -24,6 +24,8 @@ router.post("/", async (req, res) => {
       images: pictures,
       sizes,
       classNo,
+      hasSize,
+      hasClass,
     } = req.body;
     const product = await Product.create({
       name,
@@ -33,6 +35,8 @@ router.post("/", async (req, res) => {
       pictures,
       sizes,
       class: classNo,
+      hasSize,
+      hasClass,
     });
     const products = await Product.find();
     res.status(201).json(products);
@@ -54,6 +58,8 @@ router.patch("/:id", async (req, res) => {
       images: pictures,
       classNo,
       sizes,
+      hasSize,
+      hasClass,
     } = req.body;
     const product = await Product.findByIdAndUpdate(id, {
       name,
@@ -63,6 +69,8 @@ router.patch("/:id", async (req, res) => {
       pictures,
       class: classNo,
       sizes,
+      hasSize,
+      hasClass,
     });
     const products = await Product.find();
     res.status(200).json(products);

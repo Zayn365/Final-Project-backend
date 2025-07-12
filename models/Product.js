@@ -26,6 +26,16 @@ const ProductSchema = mongoose.Schema(
       required: true,
     },
     class: { type: [String], required: false }, // 👈 critical fix here
+    hasSize: {
+      type: Boolean,
+      default: false,
+      required: [false, "can be blank"],
+    },
+    hasClass: {
+      type: Boolean,
+      default: false,
+      required: [false, "can be blank"],
+    },
   },
   { minimize: false }
 );
