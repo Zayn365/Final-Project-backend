@@ -22,7 +22,6 @@ router.post("/", async (req, res) => {
       price,
       category,
       images: pictures,
-      age,
       sizes,
       classNo,
     } = req.body;
@@ -32,7 +31,6 @@ router.post("/", async (req, res) => {
       price,
       category,
       pictures,
-      age,
       sizes,
       class: classNo,
     });
@@ -48,14 +46,21 @@ router.post("/", async (req, res) => {
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const { name, description, price, category, images: pictures } = req.body;
+    const {
+      name,
+      description,
+      price,
+      category,
+      images: pictures,
+      classNo,
+    } = req.body;
     const product = await Product.findByIdAndUpdate(id, {
       name,
       description,
       price,
       category,
       pictures,
-      age,
+      class: classNo,
       size,
     });
     const products = await Product.find();

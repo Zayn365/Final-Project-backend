@@ -17,11 +17,6 @@ const ProductSchema = mongoose.Schema(
       type: String,
       required: [true, "can't be blank"],
     },
-
-    age: {
-      type: Array,
-      required: [false, "can be blank"],
-    },
     sizes: {
       type: Array,
       required: [false, "can be blank"],
