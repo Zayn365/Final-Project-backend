@@ -129,38 +129,19 @@ router.post("/add-to-cart", async (req, res) => {
 
   try {
     const user = await User.findById(userId);
-    if (!user.cart) {
-      user.cart = {
-        count: 0,
-        total: 0,
-        items: {},
-      };
-    }
-
     const userCart = user.cart;
-
-    if (userCart.items[productId]) {
-      userCart.items[productId].quantity += 1;
+    if (user.cart[productId]) {
+      userCart[productId] += 1;
     } else {
-      userCart.items[productId] = {
-        quantity: 1,
-        price: Number(price), // Final discounted price
-      };
+      userCart[productId] = 1;
     }
-
     userCart.count += 1;
-    userCart.total = Object.values(userCart.items).reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
+    userCart.total = Number(userCart.total) + Number(price);
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
-
     res.status(200).json(user);
   } catch (e) {
-    console.error("Add to cart failed:", e.message);
     res.status(400).send(e.message);
   }
 });
