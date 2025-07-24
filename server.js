@@ -41,7 +41,7 @@ app.use("/users", userRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/images", imageRoutes);
-app.use("/api/campaigns", campaignRoutes);
+app.use("/campaigns", campaignRoutes);
 
 // Stripe endpoint
 app.post("/create-payment", async (req, res) => {
