@@ -33,7 +33,7 @@ const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const imageRoutes = require("./routes/imageRoutes");
-
+const campaignRoutes = require("./routes/campaignRoutes");
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -41,6 +41,7 @@ app.use("/users", userRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/images", imageRoutes);
+app.use("/api/campaigns", campaignRoutes);
 
 // Stripe endpoint
 app.post("/create-payment", async (req, res) => {
