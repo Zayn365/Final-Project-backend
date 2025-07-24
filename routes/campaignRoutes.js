@@ -4,7 +4,7 @@ const campaignController = require("../controller/campaign.controller"); // adju
 
 router.post("/", campaignController.createCampaign);
 router.get("/", campaignController.getAllCampaigns);
-router.get("/:id", campaignController.getCampaignById);
+router.get("/single/:id", campaignController.getCampaignById);
 router.put("/:id", campaignController.updateCampaign);
 router.delete("/:id", campaignController.deleteCampaign);
 
