@@ -18,8 +18,9 @@ const CampaignSchema = mongoose.Schema(
     amount: {
       type: Number,
     },
-    selectedUser: {
-      type: String,
+    selectedUsers: {
+      type: [String], // or [Number] if TC numbers are numeric
+      default: [],
     },
   },
   { minimize: false }
