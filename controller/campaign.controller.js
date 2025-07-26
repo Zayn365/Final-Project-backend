@@ -38,11 +38,17 @@ exports.updateCampaign = async (req, res) => {
       new: true,
       runValidators: true,
     });
-    if (!campaign) return res.status(404).json({ message: "Not found" });
+
+    if (!campaign) {
+      return res.status(404).json({ message: "Kampanya bulunamadı" });
+    }
+
+    // Fetch and return all campaigns after update
     const campaigns = await Campaign.find();
-    res.status(200).json(campaigns);
+    return res.status(200).json(campaigns);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Update Error:", err);
+    return res.status(500).json({ message: "Sunucu hatası: " + err.message });
   }
 };
 
