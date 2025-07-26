@@ -18,6 +18,9 @@ const CampaignSchema = mongoose.Schema(
     amount: {
       type: Number,
     },
+    users: {
+      type: Array,
+    },
   },
   { minimize: false }
 );
