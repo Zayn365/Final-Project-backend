@@ -19,7 +19,7 @@ const CampaignSchema = mongoose.Schema(
       type: Number,
     },
     users: {
-      type: Array,
+      type: String,
     },
   },
   { minimize: false }
