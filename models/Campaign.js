@@ -18,7 +18,7 @@ const CampaignSchema = mongoose.Schema(
     amount: {
       type: Number,
     },
-    users: {
+    selectedUser: {
       type: String,
     },
   },
