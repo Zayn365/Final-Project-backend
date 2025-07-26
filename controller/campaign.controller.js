@@ -4,7 +4,14 @@ const Campaign = require("../models/Campaign");
 exports.createCampaign = async (req, res) => {
   try {
     const campaign = await Campaign.create(req.body);
-    res.status(201).json(campaign);
+
+    if (!campaign) {
+      return res.status(404).json("Not Created");
+    }
+
+    // Fetch and return all campaigns after update
+    const campaigns = await Campaign.find();
+    return res.status(200).json(campaigns);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -24,7 +31,7 @@ exports.getAllCampaigns = async (req, res) => {
 exports.getCampaignById = async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ message: "Not found" });
+    if (!campaign) return res.status(404).json("Not found");
     res.json(campaign);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,7 +47,7 @@ exports.updateCampaign = async (req, res) => {
     });
 
     if (!campaign) {
-      return res.status(404).json({ message: "Kampanya bulunamadı" });
+      return res.status(404).json("Kampanya bulunamadı");
     }
 
     // Fetch and return all campaigns after update
@@ -56,7 +63,7 @@ exports.updateCampaign = async (req, res) => {
 exports.deleteCampaign = async (req, res) => {
   try {
     const result = await Campaign.findByIdAndDelete(req.params.id);
-    if (!result) return res.status(404).json({ message: "Not found" });
+    if (!result) return res.status(404).json("Not found");
     const campaign = await Campaign.find();
     res.status(200).json(campaign);
     res.json({ message: "Campaign deleted" });
