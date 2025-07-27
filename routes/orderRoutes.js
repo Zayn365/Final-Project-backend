@@ -83,7 +83,7 @@ router.patch("/:id/mark-shipped", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const id = req.params.id;
-  const result = await Order.deleteOne({ _id: id });
+  const result = await Order.findByIdAndDelete(id);
   if (result.deletedCount === 0) {
     return res.status(404).json("Order not found");
   }
