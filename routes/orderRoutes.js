@@ -84,11 +84,9 @@ router.patch("/:id/mark-shipped", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   const id = req.params.id;
   const result = await Order.findByIdAndDelete(id);
-  if (result.deletedCount === 0) {
+  console.log("TCL ~ result:", result);
+  if (!result) {
     return res.status(404).json("Order not found");
-  }
-  if (!order) {
-    throw new Error("Something went wrong");
   }
   const orders = await Order.find();
   res.send(orders);
