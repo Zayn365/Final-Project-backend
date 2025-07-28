@@ -22,7 +22,7 @@ const UserSchema = mongoose.Schema(
     },
     tc_id: {
       type: String,
-      required: [true, "is required"],
+      required: false,
     },
     password: {
       type: String,
