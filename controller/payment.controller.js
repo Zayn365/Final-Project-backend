@@ -1,20 +1,21 @@
 const { v4: uuidv4 } = require("uuid");
+const fetch = require("node-fetch");
 
 async function initiateSepaPayment(req, res) {
   try {
     const response = await fetch(
-      "https://test.ziraatpay.com.tr/ziraatpay/api/v2/session",
+      "https://test.ziraatpay.com.tr/ziraatpay/api/v2/",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ACTION: "SESSIONTOKEN",
           MERCHANTUSER: "store@bikev.k12.tr",
-          MERCHANTPASSWORD: "Bikev1996….",
+          MERCHANTPASSWORD: "Bikev1996….", // <-- Replace with real password if not masked
           MERCHANT: "10009092",
           AMOUNT: 11.21,
           CURRENCY: "TRY",
-          MERCHANTPAYMENTID: "PaymentId-FuldmrwwiOpb",
+          MERCHANTPAYMENTID: "Payment-" + uuidv4(),
           RETURNURL:
             "https://neon-app.local.payten.com.tr/msu.merchant/index.jsp",
           CUSTOMER: "Customer-jNPz2qSI",
@@ -75,11 +76,19 @@ async function initiateSepaPayment(req, res) {
       }
     );
 
-    const data = await response.text();
-    res.json(data); // { sessionToken, responseCode, responseMsg }
+    const text = await response.text();
+
+    // Try parsing JSON first
+    try {
+      const json = JSON.parse(text);
+      return res.json(json);
+    } catch (parseErr) {
+      console.warn("Non-JSON response received from ZiraatPay");
+      return res.status(200).send({ raw: text });
+    }
   } catch (err) {
     console.error("Error requesting session token:", err);
-    res.status(500).json({ error: "Failed to request session token" });
+    return res.status(500).json({ error: "Failed to request session token" });
   }
 }
 
