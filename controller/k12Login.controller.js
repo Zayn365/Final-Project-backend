@@ -27,8 +27,46 @@ exports.k12LoginAndFetch = async (req, res) => {
         .json("Invalid K12 credentials or session not created");
     }
 
-    // Step 2: Fetch student data
-    const soapBody = `
+    const parser = new XMLParser({ ignoreAttributes: false });
+
+    // Step 2: Fetch personal info
+    const personalInfoSoap = `
+      <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Body>
+          <GetPersonalInfoSummary xmlns="http://tempuri.org/" />
+        </s:Body>
+      </s:Envelope>`;
+
+    const personalRes = await fetch(
+      "https://okul.k12net.com/K12NETDataService/K12NETDataService.svc",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          SOAPAction:
+            '"http://tempuri.org/IK12NETService/GetPersonalInfoSummary"',
+          Cookie: cookie,
+        },
+        body: personalInfoSoap,
+      }
+    );
+
+    const personalXml = await personalRes.text();
+    const personalParsed = parser.parse(personalXml);
+    const personalData =
+      personalParsed?.["s:Envelope"]?.["s:Body"]?.[
+        "GetPersonalInfoSummaryResponse"
+      ]?.["GetPersonalInfoSummaryResult"];
+    const parentEmail =
+      personalData?.["a:Emails"]?.["b:string"] || `${username}@k12.net`;
+    const parentName = `${personalData?.["a:FirstName"] || ""} ${
+      personalData?.["a:LastName"] || ""
+    }`.trim();
+    const parentPhone =
+      personalData?.["a:PhoneNumbers"]?.["a:Phone"]?.["a:Number"] || null;
+
+    // Step 3: Fetch student data
+    const studentSoapBody = `
       <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
         <s:Body>
           <GetStudent xmlns="http://tempuri.org/">
@@ -47,66 +85,56 @@ exports.k12LoginAndFetch = async (req, res) => {
           SOAPAction: '"http://tempuri.org/IK12NETService/GetStudent"',
           Cookie: cookie,
         },
-        body: soapBody,
+        body: studentSoapBody,
       }
     );
 
-    const xmlText = await studentRes.text();
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed = parser.parse(xmlText);
-
-    const student =
-      parsed?.["s:Envelope"]?.["s:Body"]?.["GetStudentResponse"]?.[
+    const studentXml = await studentRes.text();
+    const studentParsed = parser.parse(studentXml);
+    const studentData =
+      studentParsed?.["s:Envelope"]?.["s:Body"]?.["GetStudentResponse"]?.[
         "GetStudentResult"
       ]?.["a:StudentInfo"];
 
-    if (!student) {
-      return res.status(400).send("Student info not found");
-    }
+    const studentArray = Array.isArray(studentData)
+      ? studentData
+      : studentData
+      ? [studentData]
+      : [];
 
-    // Extract fields
-    const veliTc = student["a:UserName"]?.toString();
-    const ogrenciTc = student["a:OtherID"]?.toString();
-    const email = `${ogrenciTc}@k12.net`; // apply new logic
+    const firstStudent = studentArray[0];
+    const ogrenciTc = firstStudent?.["a:OtherID"];
+    const schoolName = firstStudent?.["a:SchoolName"];
 
-    const parentName =
-      student?.["a:EntryType"]?.["a:OtherCodes"]?.["a:CustomCode"]?.[
-        "a:Value"
-      ] || "Unnamed Parent";
-    const schoolName = student["a:SchoolName"];
+    const students = studentArray.map((s) => ({
+      firstName: s["a:FirstName"],
+      lastName: s["a:LastName"],
+      studentId: s["a:StudentID"],
+      studentTc: s["a:OtherID"],
+      gradeLevel: s["a:GradeLevel"],
+      birthDate: s["a:BirthDate"],
+      entryDate: s["a:EntryDate"],
+      stateOfBirth: s["a:StateOfBirth"],
+      membershipType: s["a:MembershipType"],
+      schoolInfoId: s["a:SchoolInfoID"],
+      schoolYearId: s["a:SchoolYearID"],
+      localId: s["a:LocalID"],
+    }));
 
-    const students = [
-      {
-        firstName: student["a:FirstName"],
-        lastName: student["a:LastName"],
-        studentId: student["a:StudentID"],
-        studentTc: ogrenciTc,
-        gradeLevel: student["a:GradeLevel"],
-        birthDate: student["a:BirthDate"],
-        entryDate: student["a:EntryDate"],
-        stateOfBirth: student["a:StateOfBirth"],
-        membershipType: student["a:MembershipType"],
-        schoolInfoId: student["a:SchoolInfoID"],
-        schoolYearId: student["a:SchoolYearID"],
-        localId: student["a:LocalID"],
-      },
-    ];
-
-    // Step 3: Check if user exists
-    let user = await User.findOne({ email });
+    // Step 4: Find or create user
+    let user = await User.findOne({ email: parentEmail });
 
     if (user) {
-      // Return existing user
       return res.json(user.toJSON());
     }
 
-    // Step 4: Create new user
     user = await User.create({
       name: parentName,
-      username: username, // Veli TC
-      email: email, // studentTc@k12.net
-      tc_id: ogrenciTc, // Actual student TC
-      password: password, // Will be hashed via pre-save hook
+      username: username,
+      email: parentEmail,
+      phone: parentPhone,
+      tc_id: ogrenciTc,
+      password: password,
       k12: {
         schoolName,
         students,
