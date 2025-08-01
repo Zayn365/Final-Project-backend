@@ -1,95 +1,237 @@
 const { v4: uuidv4 } = require("uuid");
 const fetch = require("node-fetch");
 
+function isValidHttpResponse(response) {
+  return response.ok && response.status >= 200 && response.status < 300;
+}
+
+async function parseJsonSafely(text) {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+}
+
 async function initiateSepaPayment(req, res) {
   try {
+    const {
+      amount,
+      customerName,
+      customerEmail,
+      customerPhone,
+      orderItems,
+      returnUrl,
+    } = req.body;
+
+    if (!amount || !customerName || !customerEmail) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const paymentId = "Payment" + uuidv4().replace(/-/g, "");
+    const customerId = "Customer" + uuidv4().replace(/-/g, "");
+
+    const formData = new URLSearchParams();
+    formData.append("ACTION", "SESSIONTOKEN");
+    formData.append("MERCHANTUSER", "store@bikev.k12.tr");
+    formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
+    formData.append("MERCHANT", "10009092");
+    formData.append("AMOUNT", String(amount));
+    formData.append("CURRENCY", "TRY");
+    formData.append("MERCHANTPAYMENTID", paymentId);
+    formData.append(
+      "RETURNURL",
+      returnUrl || "https://yourdomain.com/payment/return"
+    );
+    formData.append("CUSTOMER", customerId);
+    formData.append("CUSTOMERNAME", customerName);
+    formData.append("CUSTOMEREMAIL", customerEmail);
+    formData.append("CUSTOMERIP", req.ip || "127.0.0.1");
+    formData.append(
+      "CUSTOMERUSERAGENT",
+      req.headers["user-agent"] || "Mozilla/5.0"
+    );
+    formData.append("NAMEONCARD", customerName);
+    formData.append("CUSTOMERPHONE", customerPhone || "5380000000");
+
+    formData.append(
+      "ORDERITEMS",
+      JSON.stringify(
+        Array.isArray(orderItems) && orderItems.length
+          ? orderItems
+          : [
+              {
+                productCode: "2514",
+                name: "108269",
+                description: "book",
+                quantity: 1,
+                amount: amount,
+              },
+            ]
+      )
+    );
+
+    formData.append("DISCOUNTAMOUNT", "");
+    formData.append("BILLTOADDRESSLINE", "Road");
+    formData.append("BILLTOCITY", "Istanbul");
+    formData.append("BILLTOCOUNTRY", "Turkey");
+    formData.append("BILLTOPOSTALCODE", "1103");
+    formData.append("BILLTOPHONE", "123456789");
+    formData.append("SHIPTOADDRESSLINE", "Road");
+    formData.append("SHIPTOCITY", "Ankara");
+    formData.append("SHIPTOCOUNTRY", "Turkey");
+    formData.append("SHIPTOPOSTALCODE", "1105");
+    formData.append("SHIPTOPHONE", "987654321");
+    formData.append("SESSIONTYPE", "PAYMENTSESSION");
+
     const response = await fetch(
-      "https://test.ziraatpay.com.tr/ziraatpay/api/v2/",
+      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ACTION: "SESSIONTOKEN",
-          MERCHANTUSER: "store@bikev.k12.tr",
-          MERCHANTPASSWORD: "Bikev1996….", // <-- Replace with real password if not masked
-          MERCHANT: "10009092",
-          AMOUNT: 11.21,
-          CURRENCY: "TRY",
-          MERCHANTPAYMENTID: "Payment-" + uuidv4(),
-          RETURNURL:
-            "https://neon-app.local.payten.com.tr/msu.merchant/index.jsp",
-          CUSTOMER: "Customer-jNPz2qSI",
-          CUSTOMERNAME: "Name jNPz2qSI",
-          CUSTOMEREMAIL: "jNPz2qSI@email.com",
-          CUSTOMERIP: "127.0.0.1",
-          CUSTOMERUSERAGENT:
-            "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36",
-          NAMEONCARD: "Name jNPz2qSI",
-          CUSTOMERPHONE: "6381053412",
-          ORDERITEMS: [
-            {
-              productCode: "T00D3AITCC",
-              name: "Galaxy Note 3",
-              description: "Description of Galaxy Note 3",
-              quantity: 2,
-              amount: 449.99,
-            },
-            {
-              productCode: "B00D9AVYBM",
-              name: "Samsung Galaxy S III",
-              description:
-                "Samsung Galaxy S III (S3) Triband White (Boost Mobile)",
-              quantity: 1,
-              amount: 149.95,
-            },
-            {
-              productCode: "B00NQGP5M8",
-              name: "Apple iPhone 6",
-              description: "Apple iPhone 6, Gold, 64 GB (Unlocked) by Apple",
-              quantity: 1,
-              amount: 139.95,
-            },
-            {
-              productCode: "B00U8KSUIG",
-              name: "Samsung Galaxy S6",
-              description:
-                "Samsung Galaxy S6 SM-G920F 32GB (FACTORY UNLOCKED) 5.1 QHDBlack-InternationalVersion",
-              quantity: 1,
-              amount: 129.95,
-            },
-          ],
-          DISCOUNTAMOUNT: 2.5,
-          BILLTOADDRESSLINE: "Road",
-          BILLTOCITY: "Istanbul",
-          BILLTOCOUNTRY: "Turkey",
-          BILLTOPOSTALCODE: "1103",
-          BILLTOPHONE: "123456789",
-          SHIPTOADDRESSLINE: "Road",
-          SHIPTOCITY: "Ankara",
-          SHIPTOCOUNTRY: "Turkey",
-          SHIPTOPOSTALCODE: "1105",
-          SHIPTOPHONE: "987654321",
-          SESSIONTYPE: "PAYMENTSESSION",
-          SELLERID: "seller01;seller02",
-          COMMISSIONAMOUNT: "50.55;35.62",
-        }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
       }
     );
 
     const text = await response.text();
+    const json = await parseJsonSafely(text);
 
-    // Try parsing JSON first
-    try {
-      const json = JSON.parse(text);
-      return res.json(json);
-    } catch (parseErr) {
-      console.warn("Non-JSON response received from ZiraatPay");
-      return res.status(200).send({ raw: text });
+    if (!isValidHttpResponse(response)) {
+      return res
+        .status(response.status)
+        .json({ error: "ZiraatPay session request failed", raw: text });
     }
+
+    if (json) {
+      return res.json(json);
+    }
+
+    return res
+      .status(500)
+      .json({ error: "Invalid response from ZiraatPay", raw: text });
   } catch (err) {
     console.error("Error requesting session token:", err);
     return res.status(500).json({ error: "Failed to request session token" });
   }
 }
 
-module.exports = { initiateSepaPayment };
+async function payWithCard(req, res) {
+  try {
+    const { sessionToken, cardPan, cardExpiry, cardCvv, nameOnCard } = req.body;
+
+    if (!sessionToken || !cardPan || !cardExpiry || !cardCvv || !nameOnCard) {
+      return res.status(400).json({ error: "Missing card details" });
+    }
+
+    const formData = new URLSearchParams();
+    formData.append("ACTION", "SALE");
+    formData.append("SESSIONTOKEN", sessionToken);
+    formData.append("CARDPAN", cardPan);
+    formData.append("CARDEXPIRY", cardExpiry); // format: MM/YY
+    formData.append("CARDCVV", cardCvv);
+    formData.append("INSTALLMENTS", "1");
+    formData.append("NAMEONCARD", nameOnCard);
+    formData.append("CARDOWNER", nameOnCard);
+
+    const response = await fetch(
+      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      }
+    );
+
+    const text = await response.text();
+    const json = await parseJsonSafely(text);
+
+    if (!isValidHttpResponse(response)) {
+      return res
+        .status(response.status)
+        .json({ error: "Card payment failed", raw: text });
+    }
+
+    if (json) {
+      return res.json(json);
+    }
+
+    return res
+      .status(500)
+      .json({ error: "Invalid response from card processor", raw: text });
+  } catch (err) {
+    console.error("Card Payment Error:", err);
+    return res.status(500).json({ error: "Failed to process card payment" });
+  }
+}
+
+async function payByLink(req, res) {
+  try {
+    const {
+      amount,
+      customerEmail,
+      customerName,
+      customerPhone,
+      returnUrl,
+      merchantPaymentId,
+    } = req.body;
+
+    if (!amount || !customerEmail || !customerName) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const formData = new URLSearchParams();
+    formData.append("ACTION", "PAYBYLINKPAYMENT");
+    formData.append("MERCHANTUSER", "store@bikev.k12.tr");
+    formData.append("MERCHANTPASSWORD", "Bikev1996....");
+    formData.append("MERCHANT", "10009092");
+    formData.append("CUSTOMER", "Customer-" + uuidv4().replace(/-/g, ""));
+    formData.append("SESSIONTYPE", "PAYMENTSESSION");
+    formData.append("MERCHANTPAYMENTID", merchantPaymentId || "TESTLINK");
+    formData.append("AMOUNT", String(amount));
+    formData.append("CURRENCY", "TRY");
+    formData.append("CUSTOMEREMAIL", customerEmail);
+    formData.append("CUSTOMERNAME", customerName);
+    formData.append("CUSTOMERPHONE", customerPhone);
+    formData.append(
+      "RETURNURL",
+      returnUrl || "https://yourdomain.com/payment/return"
+    );
+    formData.append("SESSIONEXPIRY", "168h");
+
+    const response = await fetch(
+      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      }
+    );
+
+    const text = await response.text();
+    const json = await parseJsonSafely(text);
+
+    if (!isValidHttpResponse(response)) {
+      return res
+        .status(response.status)
+        .json({ error: "Pay-by-link failed", raw: text });
+    }
+
+    if (json && json.token) {
+      return res.json({
+        ...json,
+        paymentLink: `https://test.ziraatpay.com.tr/payment/token/${json.token}`,
+      });
+    }
+
+    return res.status(500).json({ error: "Invalid token response", raw: text });
+  } catch (err) {
+    console.error("Pay-by-Link Error:", err);
+    return res.status(500).json({ error: "Failed to initiate pay-by-link" });
+  }
+}
+
+module.exports = {
+  initiateSepaPayment,
+  payWithCard,
+  payByLink,
+};
