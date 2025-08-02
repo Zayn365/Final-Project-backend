@@ -35,7 +35,7 @@ async function initiateSepaPayment(req, res) {
     formData.append("ACTION", "SESSIONTOKEN");
     formData.append("MERCHANTUSER", "store@bikev.k12.tr");
     formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
-    formData.append("MERCHANT", "10009092");
+    formData.append("MERCHANT", "10010500");
     formData.append("AMOUNT", String(amount));
     formData.append("CURRENCY", "TRY");
     formData.append("MERCHANTPAYMENTID", paymentId);
@@ -85,8 +85,8 @@ async function initiateSepaPayment(req, res) {
     formData.append("SESSIONTYPE", "PAYMENTSESSION");
 
     const response = await fetch(
-      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
-      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -135,8 +135,8 @@ async function payWithCard(req, res) {
     formData.append("CARDOWNER", nameOnCard);
 
     const response = await fetch(
-      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
-      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -201,8 +201,8 @@ async function payByLink(req, res) {
     formData.append("SESSIONEXPIRY", "168h");
 
     const response = await fetch(
-      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
-      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
