@@ -86,6 +86,7 @@ async function initiateSepaPayment(req, res) {
 
     const response = await fetch(
       "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -135,6 +136,7 @@ async function payWithCard(req, res) {
 
     const response = await fetch(
       "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -200,6 +202,7 @@ async function payByLink(req, res) {
 
     const response = await fetch(
       "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://entegrasyon.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
