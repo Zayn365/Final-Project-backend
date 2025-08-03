@@ -22,7 +22,7 @@ async function initiateSepaPayment(req, res) {
       customerPhone,
       orderItems,
       returnUrl,
-      merchant,
+      isOtherCard,
     } = req.body;
 
     if (!amount || !customerName || !customerEmail) {
@@ -34,9 +34,12 @@ async function initiateSepaPayment(req, res) {
 
     const formData = new URLSearchParams();
     formData.append("ACTION", "SESSIONTOKEN");
-    formData.append("MERCHANTUSER", "store1@bikev.k12.tr");
+    formData.append(
+      "MERCHANTUSER",
+      isOtherCard ? "store2@bikev.k12.tr" : "store@bikev.k12.tr"
+    );
     formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
-    formData.append("MERCHANT", merchant || "10010177");
+    formData.append("MERCHANT", isOtherCard ? "10010177" : "10010500");
     formData.append("AMOUNT", String(amount));
     formData.append("CURRENCY", "TRY");
     formData.append("MERCHANTPAYMENTID", paymentId);
@@ -202,8 +205,8 @@ async function payByLink(req, res) {
     formData.append("SESSIONEXPIRY", "168h");
 
     const response = await fetch(
-      // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
-      "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
+      "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      // "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -255,7 +258,7 @@ async function generate3DSecureSession(req, res) {
 
     const formData = new URLSearchParams();
     formData.append("ACTION", "SESSIONTOKEN");
-    formData.append("MERCHANTUSER", "store@bikev.k12.tr");
+    formData.append("MERCHANTUSER", "store2@bikev.k12.tr");
     formData.append("MERCHANTPASSWORD", "Bikev1996....");
     // formData.append("MERCHANT", "10009092"); TEST
     formData.append("MERCHANT", "10010500");
