@@ -233,8 +233,100 @@ async function payByLink(req, res) {
   }
 }
 
+async function generate3DSecureSession(req, res) {
+  try {
+    const {
+      amount,
+      customerName,
+      customerEmail,
+      customerPhone,
+      orderItems,
+      returnUrl,
+    } = req.body;
+
+    if (!amount || !customerName || !customerEmail) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const paymentId = "Payment" + uuidv4().replace(/-/g, "");
+    const customerId = "Customer" + uuidv4().replace(/-/g, "");
+    const query = new URLSearchParams(req.body).toString();
+
+    const formData = new URLSearchParams();
+    formData.append("ACTION", "SESSIONTOKEN");
+    formData.append("MERCHANTUSER", "store@bikev.k12.tr");
+    formData.append("MERCHANTPASSWORD", "Bikev1996....");
+    // formData.append("MERCHANT", "10009092"); TEST
+    formData.append("MERCHANT", "10010500");
+    formData.append("AMOUNT", String(amount));
+    formData.append("CURRENCY", "TRY");
+    formData.append("MERCHANTPAYMENTID", paymentId);
+    formData.append("RETURNURL", returnUrl || "https://store.bikev.k12.tr/");
+    formData.append("CUSTOMER", customerId);
+    formData.append("CUSTOMERNAME", customerName);
+    formData.append("CUSTOMEREMAIL", customerEmail);
+    formData.append("CUSTOMERPHONE", customerPhone || "5380000000");
+    formData.append("CUSTOMERIP", req.ip || "127.0.0.1");
+    formData.append(
+      "CUSTOMERUSERAGENT",
+      req.headers["user-agent"] || "Mozilla/5.0"
+    );
+    formData.append(
+      "ORDERITEMS",
+      JSON.stringify(
+        Array.isArray(orderItems) && orderItems.length
+          ? orderItems
+          : [
+              {
+                productCode: "2514",
+                name: "108269",
+                description: "book",
+                quantity: 1,
+                amount: amount,
+              },
+            ]
+      )
+    );
+    formData.append("SESSIONTYPE", "PAYMENTSESSION");
+
+    const response = await fetch(
+      // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
+      "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      }
+    );
+
+    const text = await response.text();
+    const json = await parseJsonSafely(text);
+    console.log("TCL ~ generate3DSecureSession ~ json:", json);
+
+    if (!isValidHttpResponse(response)) {
+      return res
+        .status(response.status)
+        .json({ error: "Failed to create 3D session", error: json });
+    }
+
+    if (json && json.sessionToken) {
+      return res.json({ sessionToken: json.sessionToken });
+    }
+
+    return res
+      .status(500)
+      .json({ error: "Invalid response from ZiraatPay", error: json });
+  } catch (err) {
+    console.error("3D Secure Session Error:", err);
+    return res
+      .status(500)
+      .json({ error: "Failed to create 3D secure session" });
+  }
+}
+
 module.exports = {
   initiateSepaPayment,
   payWithCard,
   payByLink,
+  generate3DSecureSession,
 };
