@@ -141,9 +141,35 @@ exports.k12LoginAndFetch = async (req, res) => {
       },
     });
 
-    return res.json(user.toJSON());
+    return res.json({
+      ...user.toJSON(),
+      k12Cookie: cookie,
+    });
   } catch (error) {
     console.error("K12 Login Error:", error);
     return res.status(500).json("Something went wrong during K12 login");
   }
+};
+
+exports.createK12SaleContract = async (cookie, payload) => {
+  const response = await fetch(
+    "https://okul.k12net.com/INTCore.Web/api/SalesContracts/Create",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const json = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      `K12 Sale Contract failed: ${json?.Message || "Unknown error"}`
+    );
+  }
+
+  return json;
 };
