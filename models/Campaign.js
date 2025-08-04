@@ -23,8 +23,8 @@ const CampaignSchema = mongoose.Schema(
       default: [],
     },
     subItems: {
-      type: Array,
-      default: [],
+      type: Object,
+      default: {},
     },
   },
   { minimize: false }
