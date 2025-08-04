@@ -258,7 +258,7 @@ async function generate3DSecureSession(req, res) {
 
     const formData = new URLSearchParams();
     formData.append("ACTION", "SESSIONTOKEN");
-    formData.append("MERCHANTUSER", "store2@bikev.k12.tr");
+    formData.append("MERCHANTUSER", "store@bikev.k12.tr");
     formData.append("MERCHANTPASSWORD", "Bikev1996....");
     // formData.append("MERCHANT", "10009092"); TEST
     formData.append("MERCHANT", "10010500");
@@ -296,6 +296,7 @@ async function generate3DSecureSession(req, res) {
     const response = await fetch(
       // "https://test.ziraatpay.com.tr/ziraatpay/api/v2",
       "https://vpos.ziraatpay.com.tr/ziraatpay/api/v2",
+
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -303,9 +304,10 @@ async function generate3DSecureSession(req, res) {
       }
     );
 
+    console.log("TCL ~ generate3DSecureSession ~ response:", response);
     const text = await response.text();
+    console.log("TCL ~ generate3DSecureSession ~ text:", text);
     const json = await parseJsonSafely(text);
-    console.log("TCL ~ generate3DSecureSession ~ json:", json);
 
     if (!isValidHttpResponse(response)) {
       return res
