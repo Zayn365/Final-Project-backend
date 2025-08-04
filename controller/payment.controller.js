@@ -36,10 +36,10 @@ async function initiateSepaPayment(req, res) {
     formData.append("ACTION", "SESSIONTOKEN");
     formData.append(
       "MERCHANTUSER",
-      isOtherCard ? "store@bikev.k12.tr" : "store@bikev.k12.tr"
+      isOtherCard ? "store2@bikev.k12.tr" : "store@bikev.k12.tr"
     );
     formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
-    formData.append("MERCHANT", isOtherCard ? "10010500" : "10010500");
+    formData.append("MERCHANT", isOtherCard ? "10010177" : "10010500");
     formData.append("AMOUNT", String(amount));
     formData.append("CURRENCY", "TRY");
     formData.append("MERCHANTPAYMENTID", paymentId);
