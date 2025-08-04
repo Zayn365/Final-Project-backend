@@ -22,6 +22,10 @@ const CampaignSchema = mongoose.Schema(
       type: [String], // or [Number] if TC numbers are numeric
       default: [],
     },
+    subItems: {
+      type: Array,
+      default: [],
+    },
   },
   { minimize: false }
 );
