@@ -49,6 +49,7 @@ const UserSchema = mongoose.Schema(
 
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }],
     k12: { type: Object, default: null },
+    k12Cookie: { type: String, default: null },
   },
   { minimize: false }
 );

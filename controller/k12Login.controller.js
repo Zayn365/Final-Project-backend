@@ -139,12 +139,10 @@ exports.k12LoginAndFetch = async (req, res) => {
         schoolName,
         students,
       },
-    });
-
-    return res.json({
-      ...user.toJSON(),
       k12Cookie: cookie,
     });
+
+    return res.json(user.toJSON());
   } catch (error) {
     console.error("K12 Login Error:", error);
     return res.status(500).json("Something went wrong during K12 login");
