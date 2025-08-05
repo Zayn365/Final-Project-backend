@@ -205,16 +205,22 @@ router.post("/remove-from-cart", async (req, res) => {
   try {
     const user = await User.findById(userId);
     const userCart = user.cart;
-    userCart.total -= Number(userCart[productId]) * Number(price);
+
+    const removedQty = userCart[productId] || 0;
+    userCart.total -= removedQty * Number(price);
     if (userCart.total < 0) {
       userCart.total = 0;
     }
-    userCart.count -= userCart[productId];
+    userCart.count -= removedQty;
     delete userCart[productId];
+
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+
+    // ⬆ increase stock back fully
     await Product.findByIdAndUpdate(productId, { $inc: { stock: removedQty } });
+
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
