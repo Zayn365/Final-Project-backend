@@ -183,15 +183,42 @@ router.post("/increase-cart", async (req, res) => {
 
 router.post("/decrease-cart", async (req, res) => {
   const { userId, productId, price } = req.body;
+
   try {
     const user = await User.findById(userId);
     const userCart = user.cart;
+
+    // Check if product exists in cart
+    if (!userCart.hasOwnProperty(productId)) {
+      return res.status(404).json({ error: "Product not found in cart" });
+    }
+
+    const currentQty = Number(userCart[productId]);
+    if (isNaN(currentQty) || currentQty <= 0) {
+      return res.status(400).json({ error: "Invalid cart quantity" });
+    }
+
+    // Decrease quantity
+    userCart[productId] = currentQty - 1;
+
+    // If quantity becomes zero, remove product from cart
+    if (userCart[productId] <= 0) {
+      delete userCart[productId];
+    }
+
+    // Update cart total and count safely
     userCart.total -= Number(price);
+    if (userCart.total < 0) userCart.total = 0;
+
     userCart.count -= 1;
-    userCart[productId] -= 1;
+    if (userCart.count < 0) userCart.count = 0;
+
+    // Save updated cart
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+
+    // Restore 1 stock
     await Product.findByIdAndUpdate(productId, { $inc: { stock: 1 } });
 
     res.status(200).json(user);
@@ -202,23 +229,35 @@ router.post("/decrease-cart", async (req, res) => {
 
 router.post("/remove-from-cart", async (req, res) => {
   const { userId, productId, price } = req.body;
+
   try {
     const user = await User.findById(userId);
     const userCart = user.cart;
 
-    const removedQty = userCart[productId] || 0;
-    userCart.total -= removedQty * Number(price);
-    if (userCart.total < 0) {
-      userCart.total = 0;
+    if (!userCart.hasOwnProperty(productId)) {
+      return res.status(404).json({ error: "Product not found in cart" });
     }
+
+    const removedQty = Number(userCart[productId]);
+
+    // Sanity check
+    if (isNaN(removedQty) || removedQty <= 0) {
+      return res.status(400).json({ error: "Invalid cart quantity" });
+    }
+
+    userCart.total -= removedQty * Number(price);
+    if (userCart.total < 0) userCart.total = 0;
+
     userCart.count -= removedQty;
+    if (userCart.count < 0) userCart.count = 0;
+
     delete userCart[productId];
 
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
 
-    // ⬆ increase stock back fully
+    // Increase stock correctly
     await Product.findByIdAndUpdate(productId, { $inc: { stock: removedQty } });
 
     res.status(200).json(user);
