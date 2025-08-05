@@ -154,42 +154,67 @@ exports.k12LoginAndFetch = async (req, res) => {
     return res.status(500).json("Something went wrong during K12 login");
   }
 };
+
 exports.createK12SaleContract = async (req, res) => {
   try {
-    const userId = req.user?._id || req.body.userId;
-    const payload = req.body.data;
+    const { userId: userIdFromBody, password, data: payload } = req.body;
+    const userId = req.user?._id || userIdFromBody;
 
     const user = await User.findById(userId);
-    if (!user || !user.k12Cookie) {
+    if (!user || !user.username) {
       return res
-        .status(401)
-        .json({ error: "K12NET cookie missing or user not found" });
+        .status(400)
+        .json({ error: "K12 login credentials not found for user" });
     }
 
-    const response = await fetch(
+    // Step 1: Force login
+    const loginResponse = await fetch(
+      "https://okul.k12net.com/GWCore.Web/api/Login/Validate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          UserName: user.username, // Stored K12NET TC
+          Password: password, // Stored K12NET password
+          CreatePersistentCookie: true,
+        }),
+      }
+    );
+
+    const loginCookie = loginResponse.headers
+      .raw()
+      ["set-cookie"]?.find((c) => c.includes(".K12NETAUTH"))
+      ?.split(";")[0];
+
+    if (!loginCookie) {
+      return res
+        .status(401)
+        .json({ error: "K12 login failed - no session cookie" });
+    }
+
+    // Optionally store cookie back to DB (if needed later)
+    user.k12Cookie = loginCookie;
+    await user.save();
+
+    // Step 2: Call CreateSalesContracts
+    const createResponse = await fetch(
       "https://okul.k12net.com/INTCore.Web/api/SalesContracts/Create",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: user.k12Cookie,
-          AppID: "3d7f07f7-6ec1-4aa0-b7a4-02c3df408759", // Replace with actual full AppID
-          HAppID: "186987042",
+          Cookie: loginCookie,
           Accept: "*/*",
-          Connection: "keep-alive",
-          "Accept-Encoding": "gzip, deflate, br",
         },
         body: JSON.stringify(payload),
       }
     );
 
-    const json = await response.json();
-    console.log("TCL ~ json:", json);
-
-    if (!response.ok) {
+    const json = await createResponse.json();
+    if (!createResponse.ok) {
       return res
-        .status(response.status)
-        .json({ error: json?.Message || "K12 Sale Contract failed" });
+        .status(createResponse.status)
+        .json({ error: json?.Message || "Create failed" });
     }
 
     return res.status(200).json(json);
