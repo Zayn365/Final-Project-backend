@@ -1,18 +1,15 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const User = require("../models/User");
 
-/**
- * @route   GET /admin/reports/orders
- * @desc    Get report of all orders with student, school, items, and total
- * @query   ?school=SchoolName&status=have|no|all
- */
 exports.getOrderReports = async (req, res) => {
   try {
     const { school = "", status = "all" } = req.query;
 
-    const orders = await Order.find();
+    // Step 1: Fetch orders with user populated
+    const orders = await Order.find().populate("userId");
 
-    // Collect all product IDs across orders
+    // Step 2: Collect product IDs
     const allProductIds = new Set();
     for (const order of orders) {
       if (order.products) {
@@ -24,7 +21,7 @@ exports.getOrderReports = async (req, res) => {
       }
     }
 
-    // Fetch products from DB to map productId → product name
+    // Step 3: Map product IDs to product names
     const productDocs = await Product.find({
       _id: { $in: Array.from(allProductIds) },
     });
@@ -32,7 +29,7 @@ exports.getOrderReports = async (req, res) => {
       productDocs.map((p) => [p._id.toString(), p.name])
     );
 
-    // Map orders to report format
+    // Step 4: Build report data
     let reportData = orders.map((order) => {
       const itemEntries = Object.entries(order.products || {}).filter(
         ([key]) => key !== "total" && key !== "count"
@@ -43,10 +40,18 @@ exports.getOrderReports = async (req, res) => {
         quantity: qty,
       }));
 
+      // Get user info from populated field
+      const user = order.userId;
+      const tc_id = user?.tc_id || "";
+      const studentName = user?.name || "Bilinmiyor";
+      const schoolName =
+        user?.k12?.schoolName || order.schoolName || "Bilinmiyor";
+
       return {
         id: order._id,
-        student: order.username || "Bilinmiyor",
-        school: order.schoolName || "Bilinmiyor",
+        student: studentName,
+        tc_id,
+        school: schoolName,
         total: order.total || 0,
         status: order.status || "unknown",
         items,
@@ -54,12 +59,11 @@ exports.getOrderReports = async (req, res) => {
       };
     });
 
-    // Apply school filter if provided
+    // Step 5: Apply filters
     if (school && school !== "all") {
       reportData = reportData.filter((r) => r.school === school);
     }
 
-    // Apply order status filter
     if (status === "have") {
       reportData = reportData.filter((r) => r.hasOrder);
     } else if (status === "no") {
