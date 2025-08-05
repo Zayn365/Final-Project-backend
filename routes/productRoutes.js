@@ -130,32 +130,31 @@ router.get("/category/:category", async (req, res) => {
 
 router.post("/add-to-cart", async (req, res) => {
   const { userId, productId, price, count = 1 } = req.body;
+
   try {
     const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ error: "Ürün bulunamadı" });
+    if (!product || product.stock < count) {
+      return res.status(400).json({
+        error: `Yeterli stok yok. Mevcut stok: ${product?.stock || 0}`,
+      });
     }
-    if (product.stock < count) {
-      return res
-        .status(400)
-        .json({ error: `Yeterli stok yok. Mevcut stok: ${product.stock}` });
-    }
+
     const user = await User.findById(userId);
     const userCart = user.cart;
-    if (userCart[productId]) {
-      userCart[productId] += count;
-    } else {
-      userCart[productId] = count;
-    }
-    userCart.count += count;
-    userCart.total = Number(userCart.total) + Number(price) * count;
 
+    // Add or increase quantity
+    userCart[productId] = (userCart[productId] || 0) + count;
+    userCart.count += count;
+    userCart.total += Number(price) * count;
+
+    // Save user
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
 
-    // Decrease stock accordingly
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: -count } });
+    // Update product stock directly
+    product.stock = product.stock - count;
+    await product.save();
 
     res.status(200).json(user);
   } catch (e) {
@@ -165,16 +164,29 @@ router.post("/add-to-cart", async (req, res) => {
 
 router.post("/increase-cart", async (req, res) => {
   const { userId, productId, price } = req.body;
+
   try {
+    const product = await Product.findById(productId);
+    if (!product || product.stock < 1) {
+      return res
+        .status(400)
+        .json({ error: `Stok kalmadı. Mevcut stok: ${product?.stock || 0}` });
+    }
+
     const user = await User.findById(userId);
     const userCart = user.cart;
-    userCart.total += Number(price);
+
+    userCart[productId] = (userCart[productId] || 0) + 1;
     userCart.count += 1;
-    userCart[productId] += 1;
+    userCart.total += Number(price);
+
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: -1 } });
+
+    product.stock -= 1;
+    await product.save();
+
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
@@ -188,38 +200,26 @@ router.post("/decrease-cart", async (req, res) => {
     const user = await User.findById(userId);
     const userCart = user.cart;
 
-    // Check if product exists in cart
-    if (!userCart.hasOwnProperty(productId)) {
-      return res.status(404).json({ error: "Product not found in cart" });
+    if (!userCart[productId] || userCart[productId] <= 0) {
+      return res.status(404).json({ error: "Ürün sepette bulunamadı." });
     }
 
-    const currentQty = Number(userCart[productId]);
-    if (isNaN(currentQty) || currentQty <= 0) {
-      return res.status(400).json({ error: "Invalid cart quantity" });
-    }
+    const product = await Product.findById(productId);
+    if (!product)
+      return res.status(404).json({ error: "Ürün veritabanında bulunamadı." });
 
-    // Decrease quantity
-    userCart[productId] = currentQty - 1;
+    userCart[productId] -= 1;
+    if (userCart[productId] <= 0) delete userCart[productId];
 
-    // If quantity becomes zero, remove product from cart
-    if (userCart[productId] <= 0) {
-      delete userCart[productId];
-    }
+    userCart.count = Math.max(0, userCart.count - 1);
+    userCart.total = Math.max(0, userCart.total - Number(price));
 
-    // Update cart total and count safely
-    userCart.total -= Number(price);
-    if (userCart.total < 0) userCart.total = 0;
-
-    userCart.count -= 1;
-    if (userCart.count < 0) userCart.count = 0;
-
-    // Save updated cart
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
 
-    // Restore 1 stock
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: 1 } });
+    product.stock += 1;
+    await product.save();
 
     res.status(200).json(user);
   } catch (e) {
@@ -234,31 +234,26 @@ router.post("/remove-from-cart", async (req, res) => {
     const user = await User.findById(userId);
     const userCart = user.cart;
 
-    if (!userCart.hasOwnProperty(productId)) {
-      return res.status(404).json({ error: "Product not found in cart" });
+    const removedQty = userCart[productId];
+    if (!removedQty || removedQty <= 0) {
+      return res.status(404).json({ error: "Sepette bu ürün yok." });
     }
 
-    const removedQty = Number(userCart[productId]);
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: "Ürün bulunamadı." });
 
-    // Sanity check
-    if (isNaN(removedQty) || removedQty <= 0) {
-      return res.status(400).json({ error: "Invalid cart quantity" });
-    }
-
-    userCart.total -= removedQty * Number(price);
-    if (userCart.total < 0) userCart.total = 0;
-
-    userCart.count -= removedQty;
-    if (userCart.count < 0) userCart.count = 0;
-
+    // Update cart
+    userCart.total = Math.max(0, userCart.total - removedQty * Number(price));
+    userCart.count = Math.max(0, userCart.count - removedQty);
     delete userCart[productId];
 
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
 
-    // Increase stock correctly
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: removedQty } });
+    // Update stock
+    product.stock += removedQty;
+    await product.save();
 
     res.status(200).json(user);
   } catch (e) {
