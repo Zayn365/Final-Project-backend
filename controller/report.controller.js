@@ -9,7 +9,7 @@ exports.getOrderReports = async (req, res) => {
     // Step 1: Fetch orders with user populated
     const orders = await Order.find().populate("userId");
 
-    // Step 2: Collect product IDs
+    // Step 2: Collect all product IDs
     const allProductIds = new Set();
     for (const order of orders) {
       if (order.products) {
@@ -25,6 +25,7 @@ exports.getOrderReports = async (req, res) => {
     const productDocs = await Product.find({
       _id: { $in: Array.from(allProductIds) },
     });
+
     const productMap = Object.fromEntries(
       productDocs.map((p) => [p._id.toString(), p.name])
     );
@@ -40,7 +41,7 @@ exports.getOrderReports = async (req, res) => {
         quantity: qty,
       }));
 
-      // Get user info from populated field
+      // Get user info from populated field (safe fallback)
       const user = order.userId;
       const tc_id = user?.tc_id || "";
       const studentName = user?.name || "Bilinmiyor";
@@ -70,9 +71,9 @@ exports.getOrderReports = async (req, res) => {
       reportData = reportData.filter((r) => !r.hasOrder);
     }
 
-    res.status(200).json(reportData);
+    return res.status(200).json(reportData);
   } catch (error) {
-    console.error("Error generating order reports:", error.message);
-    res.status(500).json({ error: "Rapor verisi alınamadı" });
+    console.error("Error generating order reports:", error); // full error object
+    return res.status(500).json({ error: "Rapor verisi alınamadı" });
   }
 };
