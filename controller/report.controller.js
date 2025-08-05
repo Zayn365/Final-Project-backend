@@ -6,80 +6,65 @@ exports.getOrderReports = async (req, res) => {
   try {
     const { school = "", status = "all" } = req.query;
 
+    // 1. Get orders
     const orders = await Order.find();
+    console.log("Total orders:", orders.length);
+
+    // 2. Get all users once
     const users = await User.find();
+    const userMap = Object.fromEntries(users.map((u) => [u._id.toString(), u]));
 
-    const userTcMap = {}; // key: studentTc, value: { name, schoolName }
+    // 3. Collect product IDs
+    const allProductIds = new Set();
+    for (const order of orders) {
+      if (order.products) {
+        Object.keys(order.products).forEach((key) => {
+          if (key !== "total" && key !== "count") {
+            allProductIds.add(key);
+          }
+        });
+      }
+    }
 
-    // Map student TCs to user details
-    users.forEach((user) => {
-      const k12 = user.k12;
-      if (!k12?.schoolName || !Array.isArray(k12.students)) return;
-
-      k12.students.forEach((student) => {
-        const tc = student.studentTc?.toString();
-        const name = `${student.firstName || ""} ${
-          student.lastName || ""
-        }`.trim();
-        if (tc) {
-          userTcMap[tc] = {
-            student: name,
-            tc_id: tc,
-            school: k12.schoolName,
-          };
-        }
-      });
-    });
-
-    // Get all product IDs
-    const productIds = new Set();
-    orders.forEach((order) => {
-      Object.keys(order.products || {}).forEach((key) => {
-        if (key !== "total" && key !== "count") {
-          productIds.add(key);
-        }
-      });
-    });
-
+    // 4. Map product IDs to names
     const productDocs = await Product.find({
-      _id: { $in: Array.from(productIds) },
+      _id: { $in: Array.from(allProductIds) },
     });
     const productMap = Object.fromEntries(
       productDocs.map((p) => [p._id.toString(), p.name])
     );
 
-    // Build report list
-    const reportList = [];
+    // 5. Build report
+    const reportData = orders.map((order) => {
+      const user = userMap[order.owner?.toString()] || {}; // FIXED
 
-    Object.entries(userTcMap).forEach(([tc_id, studentInfo]) => {
-      const studentOrders = orders.filter(
-        (order) => order.username?.toString() === tc_id
+      const itemEntries = Object.entries(order.products || {}).filter(
+        ([key]) => key !== "total" && key !== "count"
       );
 
-      const items = studentOrders.flatMap((order) =>
-        Object.entries(order.products || {})
-          .filter(([key]) => key !== "total" && key !== "count")
-          .map(([productId, qty]) => ({
-            name: productMap[productId] || "Bilinmeyen Ürün",
-            quantity: qty,
-          }))
-      );
+      const items = itemEntries.map(([productId, qty]) => ({
+        name: productMap[productId] || "Bilinmeyen Ürün",
+        quantity: qty,
+      }));
 
-      const total = studentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-
-      reportList.push({
-        ...studentInfo,
-        total,
+      return {
+        id: order._id,
+        student: user.name || "Bilinmiyor",
+        tc_id: user.tc_id || "",
+        school: user.k12?.schoolName || order.schoolName || "Bilinmiyor",
+        total: order.total || 0,
+        status: order.status || "unknown",
         items,
         hasOrder: items.length > 0,
-      });
+      };
     });
 
-    // Apply filters
-    let filtered = reportList;
-    if (school !== "all" && school !== "") {
+    // 6. Apply filters
+    let filtered = reportData;
+    if (school && school !== "all") {
       filtered = filtered.filter((r) => r.school === school);
     }
+
     if (status === "have") {
       filtered = filtered.filter((r) => r.hasOrder);
     } else if (status === "no") {
