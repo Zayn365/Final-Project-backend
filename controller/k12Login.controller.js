@@ -125,9 +125,15 @@ exports.k12LoginAndFetch = async (req, res) => {
     let user = await User.findOne({ email: parentEmail });
 
     if (user) {
+      user.k12Cookie = cookie;
+      user.k12 = {
+        schoolName,
+        students,
+      };
+      await user.save(); // Save updated values
+
       return res.json(user.toJSON());
     }
-
     user = await User.create({
       name: parentName,
       username: username,
@@ -148,10 +154,9 @@ exports.k12LoginAndFetch = async (req, res) => {
     return res.status(500).json("Something went wrong during K12 login");
   }
 };
-
 exports.createK12SaleContract = async (req, res) => {
   try {
-    const userId = req.user._id || req.body.userId; // fallback if no auth middleware
+    const userId = req.user?._id || req.body.userId;
     const payload = req.body.data;
 
     const user = await User.findById(userId);
@@ -168,12 +173,18 @@ exports.createK12SaleContract = async (req, res) => {
         headers: {
           "Content-Type": "application/json",
           Cookie: user.k12Cookie,
+          AppID: "3d7f07f7-6ec1-4aa0-b7a4-02c3df408759", // Replace with actual full AppID
+          HAppID: "186987042",
+          Accept: "*/*",
+          Connection: "keep-alive",
+          "Accept-Encoding": "gzip, deflate, br",
         },
         body: JSON.stringify(payload),
       }
     );
 
     const json = await response.json();
+    console.log("TCL ~ json:", json);
 
     if (!response.ok) {
       return res
