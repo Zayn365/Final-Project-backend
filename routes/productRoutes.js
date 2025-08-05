@@ -26,6 +26,7 @@ router.post("/", async (req, res) => {
       classNo,
       hasSize,
       hasClass,
+      stock,
     } = req.body;
     const product = await Product.create({
       name,
@@ -37,6 +38,7 @@ router.post("/", async (req, res) => {
       class: classNo,
       hasSize,
       hasClass,
+      stock,
     });
     const products = await Product.find();
     res.status(201).json(products);
@@ -60,6 +62,7 @@ router.patch("/:id", async (req, res) => {
       sizes,
       hasSize,
       hasClass,
+      stock,
     } = req.body;
     const product = await Product.findByIdAndUpdate(id, {
       name,
@@ -71,6 +74,7 @@ router.patch("/:id", async (req, res) => {
       sizes,
       hasSize,
       hasClass,
+      stock,
     });
     const products = await Product.find();
     res.status(200).json(products);
@@ -125,21 +129,34 @@ router.get("/category/:category", async (req, res) => {
 // cart routes
 
 router.post("/add-to-cart", async (req, res) => {
-  const { userId, productId, price } = req.body;
-
+  const { userId, productId, price, count = 1 } = req.body;
   try {
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+    if (product.stock < count) {
+      return res
+        .status(400)
+        .json({ error: `Yeterli stok yok. Mevcut stok: ${product.stock}` });
+    }
     const user = await User.findById(userId);
     const userCart = user.cart;
-    if (user.cart[productId]) {
-      userCart[productId] += 1;
+    if (userCart[productId]) {
+      userCart[productId] += count;
     } else {
-      userCart[productId] = 1;
+      userCart[productId] = count;
     }
-    userCart.count += 1;
-    userCart.total = Number(userCart.total) + Number(price);
+    userCart.count += count;
+    userCart.total = Number(userCart.total) + Number(price) * count;
+
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+
+    // Decrease stock accordingly
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: -count } });
+
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
@@ -157,6 +174,7 @@ router.post("/increase-cart", async (req, res) => {
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: -1 } });
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
@@ -174,6 +192,8 @@ router.post("/decrease-cart", async (req, res) => {
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: 1 } });
+
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
@@ -194,6 +214,7 @@ router.post("/remove-from-cart", async (req, res) => {
     user.cart = userCart;
     user.markModified("cart");
     await user.save();
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: removedQty } });
     res.status(200).json(user);
   } catch (e) {
     res.status(400).send(e.message);
