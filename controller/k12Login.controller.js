@@ -149,25 +149,41 @@ exports.k12LoginAndFetch = async (req, res) => {
   }
 };
 
-exports.createK12SaleContract = async (cookie, payload) => {
-  const response = await fetch(
-    "https://okul.k12net.com/INTCore.Web/api/SalesContracts/Create",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: cookie,
-      },
-      body: JSON.stringify(payload),
+exports.createK12SaleContract = async (req, res) => {
+  try {
+    const userId = req.user._id || req.body.userId; // fallback if no auth middleware
+    const payload = req.body.data;
+
+    const user = await User.findById(userId);
+    if (!user || !user.k12Cookie) {
+      return res
+        .status(401)
+        .json({ error: "K12NET cookie missing or user not found" });
     }
-  );
 
-  const json = await response.json();
-  if (!response.ok) {
-    throw new Error(
-      `K12 Sale Contract failed: ${json?.Message || "Unknown error"}`
+    const response = await fetch(
+      "https://okul.k12net.com/INTCore.Web/api/SalesContracts/Create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: user.k12Cookie,
+        },
+        body: JSON.stringify(payload),
+      }
     );
-  }
 
-  return json;
+    const json = await response.json();
+
+    if (!response.ok) {
+      return res
+        .status(response.status)
+        .json({ error: json?.Message || "K12 Sale Contract failed" });
+    }
+
+    return res.status(200).json(json);
+  } catch (error) {
+    console.error("K12 Sale Contract Error:", error.message);
+    return res.status(500).json({ error: error.message });
+  }
 };
