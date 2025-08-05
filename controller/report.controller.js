@@ -36,7 +36,7 @@ exports.getOrderReports = async (req, res) => {
 
     // 5. Build report
     const reportData = orders.map((order) => {
-      const user = userMap[order.userId?.toString()] || {};
+      const user = userMap[order.owner?.toString()] || {}; // FIXED
 
       const itemEntries = Object.entries(order.products || {}).filter(
         ([key]) => key !== "total" && key !== "count"
