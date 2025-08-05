@@ -6,10 +6,15 @@ exports.getOrderReports = async (req, res) => {
   try {
     const { school = "", status = "all" } = req.query;
 
-    // Step 1: Fetch orders with user populated
-    const orders = await Order.find().populate("userId");
+    // 1. Get orders
+    const orders = await Order.find();
+    console.log("Total orders:", orders.length);
 
-    // Step 2: Collect all product IDs
+    // 2. Get all users once
+    const users = await User.find();
+    const userMap = Object.fromEntries(users.map((u) => [u._id.toString(), u]));
+
+    // 3. Collect product IDs
     const allProductIds = new Set();
     for (const order of orders) {
       if (order.products) {
@@ -21,17 +26,18 @@ exports.getOrderReports = async (req, res) => {
       }
     }
 
-    // Step 3: Map product IDs to product names
+    // 4. Map product IDs to names
     const productDocs = await Product.find({
       _id: { $in: Array.from(allProductIds) },
     });
-
     const productMap = Object.fromEntries(
       productDocs.map((p) => [p._id.toString(), p.name])
     );
 
-    // Step 4: Build report data
-    let reportData = orders.map((order) => {
+    // 5. Build report
+    const reportData = orders.map((order) => {
+      const user = userMap[order.userId?.toString()] || {};
+
       const itemEntries = Object.entries(order.products || {}).filter(
         ([key]) => key !== "total" && key !== "count"
       );
@@ -41,18 +47,11 @@ exports.getOrderReports = async (req, res) => {
         quantity: qty,
       }));
 
-      // Get user info from populated field (safe fallback)
-      const user = order.userId;
-      const tc_id = user?.tc_id || "";
-      const studentName = user?.name || "Bilinmiyor";
-      const schoolName =
-        user?.k12?.schoolName || order.schoolName || "Bilinmiyor";
-
       return {
         id: order._id,
-        student: studentName,
-        tc_id,
-        school: schoolName,
+        student: user.name || "Bilinmiyor",
+        tc_id: user.tc_id || "",
+        school: user.k12?.schoolName || order.schoolName || "Bilinmiyor",
         total: order.total || 0,
         status: order.status || "unknown",
         items,
@@ -60,20 +59,21 @@ exports.getOrderReports = async (req, res) => {
       };
     });
 
-    // Step 5: Apply filters
+    // 6. Apply filters
+    let filtered = reportData;
     if (school && school !== "all") {
-      reportData = reportData.filter((r) => r.school === school);
+      filtered = filtered.filter((r) => r.school === school);
     }
 
     if (status === "have") {
-      reportData = reportData.filter((r) => r.hasOrder);
+      filtered = filtered.filter((r) => r.hasOrder);
     } else if (status === "no") {
-      reportData = reportData.filter((r) => !r.hasOrder);
+      filtered = filtered.filter((r) => !r.hasOrder);
     }
 
-    return res.status(200).json(reportData);
-  } catch (error) {
-    console.error("Error generating order reports:", error); // full error object
+    return res.status(200).json(filtered);
+  } catch (err) {
+    console.error("🔥 FULL REPORT ERROR:", err);
     return res.status(500).json({ error: "Rapor verisi alınamadı" });
   }
 };
