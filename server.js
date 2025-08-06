@@ -26,7 +26,7 @@ const io = new Server(server, {
     methods: ["GET", "POST", "PATCH", "DELETE"],
   },
 });
-
+// Comment
 // Routes
 const User = require("./models/User");
 const userRoutes = require("./routes/userRoutes");
