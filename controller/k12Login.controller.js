@@ -157,67 +157,64 @@ exports.k12LoginAndFetch = async (req, res) => {
 
 exports.createK12SaleContract = async (req, res) => {
   try {
-    const { userId: userIdFromBody, password, data: payload } = req.body;
+    const { userId: userIdFromBody, password, data: salesData } = req.body;
     const userId = req.user?._id || userIdFromBody;
 
     const user = await User.findById(userId);
     if (!user || !user.username) {
       return res
         .status(400)
-        .json({ error: "K12 login credentials not found for user" });
+        .json({ error: "User or K12 login credentials not found" });
     }
 
-    // Step 1: Force login
+    // Step 1: Login to K12NET
     const loginResponse = await fetch(
       "https://okul.k12net.com/GWCore.Web/api/Login/Validate",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          UserName: user.username, // Stored K12NET TC
-          Password: password, // Stored K12NET password
-          CreatePersistentCookie: true,
+          UserName: user.username,
+          Password: password,
         }),
       }
     );
 
-    const loginCookie = loginResponse.headers
-      .raw()
-      ["set-cookie"]?.find((c) => c.includes(".K12NETAUTH"))
-      ?.split(";")[0];
+    const allCookies = loginResponse.headers.raw()["set-cookie"] || [];
 
+    // Extract .AspNetCore.K12NETAUTH cookie
+    const loginCookie = allCookies
+      .find((c) => c.includes(".AspNetCore..K12NETAUTH"))
+      ?.split(";")[0];
     if (!loginCookie) {
       return res
         .status(401)
-        .json({ error: "K12 login failed - no session cookie" });
+        .json({ error: "K12 login failed - session cookie missing" });
     }
 
-    // Optionally store cookie back to DB (if needed later)
-    user.k12Cookie = loginCookie;
-    await user.save();
-
-    // Step 2: Call CreateSalesContracts
-    const createResponse = await fetch(
+    // Step 2: Send Sales Contract
+    const response = await fetch(
       "https://okul.k12net.com/INTCore.Web/api/SalesContracts/Create",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Cookie: loginCookie,
-          Accept: "*/*",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(salesData),
       }
     );
 
-    const json = await createResponse.json();
-    if (!createResponse.ok) {
-      return res
-        .status(createResponse.status)
-        .json({ error: json?.Message || "Create failed" });
+    const json = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, result: json });
     }
 
-    return res.status(200).json(json);
+    return res.status(200).json({
+      success: true,
+      result: json,
+    });
   } catch (error) {
     console.error("K12 Sale Contract Error:", error.message);
     return res.status(500).json({ error: error.message });
