@@ -40,6 +40,7 @@ router.post("/", async (req, res) => {
       hasSize,
       hasClass,
       stock,
+      isDisabled: false,
     });
     const products = await Product.find();
     res.status(201).json(products);
