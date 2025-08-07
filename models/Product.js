@@ -36,6 +36,11 @@ const ProductSchema = mongoose.Schema(
       default: false,
       required: [false, "can be blank"],
     },
+    isDisabled: {
+      type: Boolean,
+      default: false,
+      required: [false, "can be blank"],
+    },
     stock: { type: Number, default: 10 },
   },
   { minimize: false }

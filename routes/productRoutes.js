@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const Product = require("../models/Product");
 const User = require("../models/User");
+const mongoose = require("mongoose");
 
 //get products;
 router.get("/", async (req, res) => {
@@ -106,6 +107,30 @@ router.get("/:id", async (req, res) => {
     const similar = await Product.find({ category: product.category }).limit(5);
     res.status(200).json({ product, similar });
   } catch (e) {
+    res.status(400).send(e.message);
+  }
+});
+
+router.get("/disable/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid product ID" });
+  }
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+    product.isDisabled = !product.isDisabled;
+    await product.save();
+    const allProducts = await Product.find();
+    res.status(200).json(allProducts);
+  } catch (e) {
+    console.error("Error in GET /:id:", e);
     res.status(400).send(e.message);
   }
 });
