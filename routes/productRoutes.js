@@ -127,7 +127,7 @@ router.get("/disable/:id", async (req, res) => {
     }
     product.isDisabled = !product.isDisabled;
     await product.save();
-    res.status(200).json({ success: true, message: "Product disabled" });
+    res.status(200).json({ success: true, message: "Ürün durumu güncellendi" });
   } catch (e) {
     console.error("Error in GET /:id:", e);
     res.status(400).send(e.message);
