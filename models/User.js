@@ -5,7 +5,7 @@ const UserSchema = mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "is required"],
+      required: [false, "is not required"],
     },
     username: { type: String },
     email: {
@@ -13,12 +13,12 @@ const UserSchema = mongoose.Schema(
       required: [true, "is required"],
       unique: true,
       index: true,
-      validate: {
-        validator: function (str) {
-          return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/g.test(str);
-        },
-        message: (props) => `${props.value} is not a valid email`,
-      },
+      // validate: {
+      //   validator: function (str) {
+      //     return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/g.test(str);
+      //   },
+      //   message: (props) => `${props.value} is not a valid email`,
+      // },
     },
     tc_id: {
       type: String,
