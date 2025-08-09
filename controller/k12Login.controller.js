@@ -19,6 +19,7 @@ exports.k12LoginAndFetch = async (req, res) => {
         }),
       }
     );
+    console.log("TCL ~ loginRes:", loginRes.json());
 
     const cookie = loginRes.headers.raw()["set-cookie"]?.[0]?.split(";")[0];
     if (!cookie) {
@@ -28,6 +29,7 @@ exports.k12LoginAndFetch = async (req, res) => {
     }
 
     const parser = new XMLParser({ ignoreAttributes: false });
+    console.log("TCL ~ parser:", parser);
 
     // Step 2: Fetch personal info
     const personalInfoSoap = `
@@ -135,7 +137,7 @@ exports.k12LoginAndFetch = async (req, res) => {
       return res.json(user.toJSON());
     }
     user = await User.create({
-      name: parentName,
+      name: parentName || username,
       username: username,
       email: parentEmail,
       phone: parentPhone,
