@@ -68,5 +68,5 @@ router.post("/:id/updateNotifications", async (req, res) => {
 
 router.post("/k12/sale", K12Login.createK12SaleContract);
 
-router.post("/k12Login", K12Login.k12LoginAndFetch);
+router.post("/k12Login", K12Login.k12LocalLogin);
 module.exports = router;
