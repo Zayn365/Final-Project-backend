@@ -24,6 +24,7 @@ async function initiateSepaPayment(req, res) {
       returnUrl,
       isOtherCard,
     } = req.body;
+    console.log("TCL ~ initiateSepaPayment ~ returnUrl:", returnUrl);
 
     if (!amount || !customerName || !customerEmail) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -34,18 +35,22 @@ async function initiateSepaPayment(req, res) {
 
     const formData = new URLSearchParams();
     formData.append("ACTION", "SESSIONTOKEN");
-    formData.append(
-      "MERCHANTUSER",
-      !isOtherCard ? "store2@bikev.k12.tr" : "store@bikev.k12.tr"
-    );
-    formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
-    formData.append("MERCHANT", !isOtherCard ? "10010177" : "10010500");
+    // formData.append(
+    //   "MERCHANTUSER",
+    //   !isOtherCard ? "store2@bikev.k12.tr" : "store@bikev.k12.tr"
+    // );
+    formData.append("MERCHANTUSER", "store2@bikev.k12.tr");
+    // formData.append("MERCHANTPASSWORD", "Bikev1996...."); // Replace with env var in production
+    formData.append("MERCHANTPASSWORD", "Bikevegitim1996."); // Replace with env var in production
+    // formData.append("MERCHANT", !isOtherCard ? "10010177" : "10010500");
+    formData.append("MERCHANT", "10010177");
     formData.append("AMOUNT", String(amount));
     formData.append("CURRENCY", "TRY");
     formData.append("MERCHANTPAYMENTID", paymentId);
     formData.append(
       "RETURNURL",
-      returnUrl || "https://yourdomain.com/payment/return"
+      returnUrl ||
+        "https://final-project-backend-m9nb.onrender.com/payment/result"
     );
     formData.append("CUSTOMER", customerId);
     formData.append("CUSTOMERNAME", customerName);
